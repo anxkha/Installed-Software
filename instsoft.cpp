@@ -22,6 +22,7 @@
 #define MAX_VALUE_LENGTH		500 * sizeof(TCHAR)
 #define INSTALL_DATE_LENGTH		50
 #define DISPLAY_NAME_LENGTH		500
+#define VERSION_LENGTH			50
 #define COMPUTER_NAME_LENGTH	50
 
 
@@ -30,6 +31,7 @@ typedef struct SOFTWARE_DATA
 {
 	TCHAR	InstallDate[INSTALL_DATE_LENGTH];
 	TCHAR	DisplayName[DISPLAY_NAME_LENGTH];
+	TCHAR	DisplayVersion[VERSION_LENGTH];
 } *PSOFTWARE_DATA;
 
 typedef struct SOFTWARE_DATA_NODE
@@ -132,9 +134,10 @@ void DisplaySoftwareList()
 
 	while( pCurrent )
 	{
-		_tprintf( TEXT("%-20s%s\n"),
+		_tprintf( TEXT("%-20s%s -- %s\n"),
 				  pCurrent->Data.InstallDate,
-				  pCurrent->Data.DisplayName );
+				  pCurrent->Data.DisplayName,
+				  pCurrent->Data.DisplayVersion );
 
 		pCurrent = pCurrent->Next;
 	}
@@ -222,6 +225,7 @@ void QuerySubkey( TCHAR* sKey, DWORD nKeyLength )
 		// If there is no InstallDate value, we don't want to fail, instead
 		// we'll put that it's not available.
 		StringCchCopy( pNew->Data.InstallDate, INSTALL_DATE_LENGTH, TEXT("N/A") );
+		result = ERROR_SUCCESS;
 	}
 	else
 	{
@@ -240,6 +244,27 @@ void QuerySubkey( TCHAR* sKey, DWORD nKeyLength )
 	if( ERROR_SUCCESS != result ) goto done;
 
 	StringCchCopy( pNew->Data.DisplayName, DISPLAY_NAME_LENGTH, sValue );
+
+	nValueSize = MAX_VALUE_LENGTH;
+
+	result = RegGetValue( g_hBaseKey,
+						  sBaseKey,
+						  TEXT("DisplayVersion"),
+						  RRF_RT_ANY,
+						  NULL,
+						  sValue,
+						  &nValueSize );
+	if( ERROR_SUCCESS != result )
+	{
+		// If there is no DisplayVersion value, we don't want to fail, instead
+		// we'll put that it's not available.
+		StringCchCopy( pNew->Data.DisplayVersion, VERSION_LENGTH, TEXT("N/A") );
+		result = ERROR_SUCCESS;
+	}
+	else
+	{
+		StringCchCopy( pNew->Data.DisplayVersion, VERSION_LENGTH, sValue );
+	}
 
 	AddNodeToList( pNew );
 
