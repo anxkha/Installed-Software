@@ -72,13 +72,13 @@ void AddNodeToList( PSOFTWARE_DATA_NODE pNode )
 	{
 		// If the current node in the list is greater than the node to add,
 		// we add it to the point just before the current node.
-		if( (CompareString( LOCALE_NAME_USER_DEFAULT,
+		if( (CompareString( LOCALE_USER_DEFAULT,
 							NORM_IGNORECASE,
 							pNode->Data.DisplayName,
 							DISPLAY_NAME_LENGTH,
 							pCurrent->Data.DisplayName,
 							DISPLAY_NAME_LENGTH ) == CSTR_EQUAL) ||
-			(CompareString( LOCALE_NAME_USER_DEFAULT,
+			(CompareString( LOCALE_USER_DEFAULT,
 							NORM_IGNORECASE,
 							pNode->Data.DisplayName,
 							DISPLAY_NAME_LENGTH,
@@ -126,18 +126,19 @@ void AddNodeToList( PSOFTWARE_DATA_NODE pNode )
 //
 //  Desc: Displays the content of the software list.
 // ----------------------------------------------------------------------------
-void DisplaySoftwareList()
+void DisplaySoftwareList( FILE* hFile )
 {
 	PSOFTWARE_DATA_NODE pCurrent;
-
+	
 	pCurrent = g_pSoftwareListHead;
 
 	while( pCurrent )
 	{
-		_tprintf( TEXT("%-20s%s -- %s\n"),
-				  pCurrent->Data.InstallDate,
-				  pCurrent->Data.DisplayName,
-				  pCurrent->Data.DisplayVersion );
+		_ftprintf( hFile,
+				   TEXT("%-20s%s -- %s\n"),
+				   pCurrent->Data.InstallDate,
+				   pCurrent->Data.DisplayName,
+				   pCurrent->Data.DisplayVersion );
 
 		pCurrent = pCurrent->Next;
 	}
@@ -287,28 +288,67 @@ int _tmain( int argc, TCHAR** argv )
 {
 	TCHAR sComputerName[COMPUTER_NAME_LENGTH];
 	TCHAR* sSubkeyName = NULL;
+	TCHAR sFilename[MAX_PATH];
+	TCHAR sTime[50];
+	TCHAR sDate[50];
 	DWORD nComputerNameSize = COMPUTER_NAME_LENGTH;
 	DWORD nSubkeyNameSize;
 	DWORD nNumberOfSubkeys;
 	HKEY hSoftwareListKey = NULL;
 	LONG result = ERROR_SUCCESS;
 	BOOL bRemoteComputer = FALSE;
+	BOOL bPrintToFile = FALSE;
+	FILE* hFile = stdout;
+	SYSTEMTIME tDateTime;
 
 	if( argc > 1 )
 	{
-		StringCchCopy( sComputerName, nComputerNameSize, argv[1] );
-		bRemoteComputer = TRUE;
+		if( argc > 2 )
+		{
+			if( CompareString( LOCALE_USER_DEFAULT,
+							   NORM_IGNORECASE,
+							   argv[1],
+							   2,
+							   TEXT("-f"),
+							   2 ) == CSTR_EQUAL)
+			{
+				bPrintToFile = TRUE;
+
+				StringCchCopy( sComputerName, nComputerNameSize, argv[2] );
+				bRemoteComputer = TRUE;
+			}
+			else
+			{
+				StringCchCopy( sComputerName, nComputerNameSize, argv[1] );
+				bRemoteComputer = TRUE;
+			}
+		}
+		else
+		{
+			if( CompareString( LOCALE_USER_DEFAULT,
+							   NORM_IGNORECASE,
+							   argv[1],
+							   2,
+							   TEXT("-f"),
+							   2 ) == CSTR_EQUAL)
+			{
+				bPrintToFile = TRUE;
+
+				// Get the computer name.
+				GetComputerName( sComputerName, &nComputerNameSize );
+			}
+			else
+			{
+				StringCchCopy( sComputerName, nComputerNameSize, argv[1] );
+				bRemoteComputer = TRUE;
+			}
+		}
 	}
 	else
 	{
 		// Get the computer name.
 		GetComputerName( sComputerName, &nComputerNameSize );
 	}
-
-	// Display the table header.
-	_tprintf( TEXT("Computer name: %s\n"), sComputerName );
-	_tprintf( TEXT("------------------------------------\n\n") );
-	_tprintf( TEXT("%-20sProgram Name\n\n"), TEXT("Install Date") );
 
 	if( bRemoteComputer )
 	{
@@ -397,10 +437,57 @@ int _tmain( int argc, TCHAR** argv )
 		}
 	}
 
-	DisplaySoftwareList();
-	DestroySoftwareList();
+	// If we are outputting to a file, open it now.
+	if( bPrintToFile )
+	{
+		GetLocalTime( &tDateTime );
+
+		GetTimeFormat( LOCALE_USER_DEFAULT,
+					   TIME_FORCE24HOURFORMAT,
+					   &tDateTime,
+					   TEXT("HHmmss"),
+					   sTime,
+					   50 );
+
+		GetDateFormat( LOCALE_USER_DEFAULT,
+					   0,
+					   &tDateTime,
+					   TEXT("MMddyyyy"),
+					   sDate,
+					   50 );
+
+		StringCchCopy( sFilename, MAX_PATH, sComputerName );
+		StringCchCat( sFilename, MAX_PATH, TEXT("_") );
+		StringCchCat( sFilename, MAX_PATH, sDate );
+		StringCchCat( sFilename, MAX_PATH, TEXT("-") );
+		StringCchCat( sFilename, MAX_PATH, sTime );
+		StringCchCat( sFilename, MAX_PATH, TEXT(".txt") );
+
+		_tprintf( sFilename );
+
+		_tfopen_s( &hFile, sFilename, TEXT("w") );
+		if( !hFile )
+		{
+			_ftprintf( stderr, TEXT("Unable to open output file for writing: %s\n"), sFilename );
+			goto done;
+		}
+	}
+
+	// Display the table header.
+	_ftprintf( hFile, TEXT("Computer name: %s\n"), sComputerName );
+	_ftprintf( hFile, TEXT("------------------------------------\n\n") );
+	_ftprintf( hFile, TEXT("%-20sProgram Name\n\n"), TEXT("Install Date") );
+
+	DisplaySoftwareList( hFile );
+
+	if( bPrintToFile )
+	{
+		fclose( hFile );
+	}
 
 done:
+	DestroySoftwareList();
+
 	if( sSubkeyName ) HeapFree( g_hProcessHeap, NULL, sSubkeyName );
 	if( hSoftwareListKey ) RegCloseKey( hSoftwareListKey );
 
