@@ -25,6 +25,9 @@
 #define VERSION_LENGTH			50
 #define COMPUTER_NAME_LENGTH	50
 
+#define VERSION_MAJOR	1
+#define VERSION_MINOR	2
+
 
 // Global declarations.
 typedef struct SOFTWARE_DATA
@@ -289,6 +292,7 @@ int _tmain( int argc, TCHAR** argv )
 	TCHAR sComputerName[COMPUTER_NAME_LENGTH];
 	TCHAR* sSubkeyName = NULL;
 	TCHAR sFilename[MAX_PATH];
+	TCHAR sPath[MAX_PATH];
 	TCHAR sTime[50];
 	TCHAR sDate[50];
 	DWORD nComputerNameSize = COMPUTER_NAME_LENGTH;
@@ -303,19 +307,45 @@ int _tmain( int argc, TCHAR** argv )
 
 	if( argc > 1 )
 	{
+		if( CompareString( LOCALE_USER_DEFAULT,
+						   NORM_IGNORECASE,
+						   argv[1],
+						   2,
+						   TEXT("/?"),
+						   2 ) == CSTR_EQUAL )
+		{
+			_tprintf( TEXT("instsoft version %d.%d, Copyright (c) 2011, Lucas M. Suggs\n"), VERSION_MAJOR, VERSION_MINOR );
+			_tprintf( TEXT("Usage: %s [-f path] [computername]\n"), argv[0] );
+
+			return 0;
+		}
+	}
+
+	if( argc > 1 )
+	{
 		if( argc > 2 )
 		{
 			if( CompareString( LOCALE_USER_DEFAULT,
 							   NORM_IGNORECASE,
 							   argv[1],
 							   2,
-							   TEXT("-f"),
+							   TEXT("/f"),
 							   2 ) == CSTR_EQUAL)
 			{
 				bPrintToFile = TRUE;
 
-				StringCchCopy( sComputerName, nComputerNameSize, argv[2] );
-				bRemoteComputer = TRUE;
+				StringCchCopy( sPath, MAX_PATH, argv[2] );
+
+				if( argc > 3 )
+				{
+					StringCchCopy( sComputerName, nComputerNameSize, argv[3] );
+					bRemoteComputer = TRUE;
+				}
+				else
+				{
+					// Get the computer name.
+					GetComputerName( sComputerName, &nComputerNameSize );
+				}
 			}
 			else
 			{
@@ -325,23 +355,8 @@ int _tmain( int argc, TCHAR** argv )
 		}
 		else
 		{
-			if( CompareString( LOCALE_USER_DEFAULT,
-							   NORM_IGNORECASE,
-							   argv[1],
-							   2,
-							   TEXT("-f"),
-							   2 ) == CSTR_EQUAL)
-			{
-				bPrintToFile = TRUE;
-
-				// Get the computer name.
-				GetComputerName( sComputerName, &nComputerNameSize );
-			}
-			else
-			{
-				StringCchCopy( sComputerName, nComputerNameSize, argv[1] );
-				bRemoteComputer = TRUE;
-			}
+			StringCchCopy( sComputerName, nComputerNameSize, argv[1] );
+			bRemoteComputer = TRUE;
 		}
 	}
 	else
@@ -456,14 +471,16 @@ int _tmain( int argc, TCHAR** argv )
 					   sDate,
 					   50 );
 
-		StringCchCopy( sFilename, MAX_PATH, sComputerName );
+		StringCchCopy( sFilename, MAX_PATH, sPath );
+		StringCchCat( sFilename, MAX_PATH, TEXT("\\") );
+		StringCchCat( sFilename, MAX_PATH, sComputerName );
 		StringCchCat( sFilename, MAX_PATH, TEXT("_") );
 		StringCchCat( sFilename, MAX_PATH, sDate );
 		StringCchCat( sFilename, MAX_PATH, TEXT("-") );
 		StringCchCat( sFilename, MAX_PATH, sTime );
 		StringCchCat( sFilename, MAX_PATH, TEXT(".txt") );
 
-		_tprintf( sFilename );
+		_tprintf( TEXT("%s\n"), sFilename );
 
 		_tfopen_s( &hFile, sFilename, TEXT("w") );
 		if( !hFile )
