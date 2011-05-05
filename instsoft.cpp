@@ -216,14 +216,25 @@ void QuerySubkey( TCHAR* sKey, DWORD nKeyLength )
 	StringCchCat( sBaseKey, MAX_KEY_LENGTH, TEXT("\\") );
 	StringCchCat( sBaseKey, MAX_KEY_LENGTH, sKey );
 
+	// Open the specific software key.
+	result = RegOpenKeyEx( g_hBaseKey,
+						   sBaseKey,
+						   0,
+						   KEY_READ,
+						   &hSubkey );
+	if( ERROR_SUCCESS != result )
+	{
+		_ftprintf( stderr, TEXT("Unable to open the required registry key!\n") );
+		goto done;
+	}
+
 	// Retrieve the InstallDate and DisplayName values and display them.
-	result = RegGetValue( g_hBaseKey,
-						  sBaseKey,
-						  TEXT("InstallDate"),
-						  RRF_RT_ANY,
-						  NULL,
-						  sValue,
-						  &nValueSize );
+	result = RegQueryValueEx( hSubkey,
+							  TEXT("InstallDate"),
+							  NULL,
+							  NULL,
+							  (LPBYTE)sValue,
+							  &nValueSize );
 	if( ERROR_SUCCESS != result )
 	{
 		// If there is no InstallDate value, we don't want to fail, instead
@@ -238,26 +249,24 @@ void QuerySubkey( TCHAR* sKey, DWORD nKeyLength )
 
 	nValueSize = MAX_VALUE_LENGTH;
 
-	result = RegGetValue( g_hBaseKey,
-						  sBaseKey,
-						  TEXT("DisplayName"),
-						  RRF_RT_ANY,
-						  NULL,
-						  sValue,
-						  &nValueSize );
+	result = RegQueryValueEx( hSubkey,
+							  TEXT("DisplayName"),
+							  NULL,
+							  NULL,
+							  (LPBYTE)sValue,
+							  &nValueSize );
 	if( ERROR_SUCCESS != result ) goto done;
 
 	StringCchCopy( pNew->Data.DisplayName, DISPLAY_NAME_LENGTH, sValue );
 
 	nValueSize = MAX_VALUE_LENGTH;
 
-	result = RegGetValue( g_hBaseKey,
-						  sBaseKey,
-						  TEXT("DisplayVersion"),
-						  RRF_RT_ANY,
-						  NULL,
-						  sValue,
-						  &nValueSize );
+	result = RegQueryValueEx( hSubkey,
+							  TEXT("DisplayVersion"),
+							  NULL,
+							  NULL,
+							  (LPBYTE)sValue,
+							  &nValueSize );
 	if( ERROR_SUCCESS != result )
 	{
 		// If there is no DisplayVersion value, we don't want to fail, instead
@@ -278,6 +287,7 @@ done:
 		if( pNew ) HeapFree( g_hProcessHeap, NULL, pNew );
 	}
 
+	if( hSubkey ) RegCloseKey( hSubkey );
 	if( sValue ) HeapFree( g_hProcessHeap, NULL, sValue );
 }
 
