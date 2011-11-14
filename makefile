@@ -12,19 +12,19 @@ linkparam64 = /LTCG /RELEASE /SUBSYSTEM:CONSOLE /NOLOGO /MACHINE:X64 /DYNAMICBAS
 objs = instsoft.obj
 objs64 = instsoft64.obj
 src = instsoft.cpp
-srcdotnet = instsoft.cs
+cssrc = instsoft.cs
 libs = kernel32.lib advapi32.lib
-newtarget = instsoft.exe
-newtarget64 = instsoft64.exe
+cstarget = instsoft.exe
+cstarget64 = instsoft64.exe
 target = instsoft.old.exe
 target64 = instsoft64.old.exe
 
-all: $(target) $(target64) $(newtarget) $(newtarget64)
+all: $(target) $(target64) $(cstarget) $(cstarget64)
 
-x64: $(target64) $(newtarget64)
+x64: $(target64) $(cstarget64)
 
 clean:
-	del $(objs) $(objs64) $(target) $(target64) $(newtarget) $(newtarget64)
+	del $(objs) $(objs64) $(target) $(target64) $(cstarget) $(cstarget64)
 
 instsoft.obj: instsoft.cpp
 	$(cl) $(clparam) /Fo"$@" instsoft.cpp
@@ -38,8 +38,8 @@ $(target): $(objs)
 $(target64): $(objs64)
 	$(link64) $(linkparam64) /OUT:$(target64) $(libs) $**
 
-$(newtarget): $(srcdotnet)
+$(cstarget): $(cssrc)
 	$(csharp) $(csparam) /platform:anycpu /OUT:$@ $**
 
-$(newtarget64): $(srcdotnet)
+$(cstarget64): $(cssrc)
 	$(csharp) $(csparam) /platform:x64 /OUT:$@ $**
